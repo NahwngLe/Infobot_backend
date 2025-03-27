@@ -10,11 +10,14 @@ from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAI
+from langchain_core.prompts import PromptTemplate
 
 load_dotenv()
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 # MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN")
 os.environ["HF_TOKEN"] = HF_TOKEN
 
@@ -123,3 +126,17 @@ def save_to_db(pdf, namespace = 'default'):
 message = save_to_db('app/assest/pdf/main.pdf')
 print(message)
 
+def generate_quiz(pdf):
+    chunks = split_documents_into_chunks(pdf)
+    prompt = PromptTemplate.from_template("""
+        Generate quiz questions based on the following text. The output must be in JSON format.
+        Requirements:
+            + Generate multiple-choice and Yes/No question only
+            + Each question corresponding with multiple-choice should be 4 options
+            + Clearly indicate the correct answer.
+            + Provide a brief explanation for why the correct answer is correct.
+            + The output format must be valid JSON.
+    """)
+
+
+generate_quiz('app/assest/pdf/main.pdf')
