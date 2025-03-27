@@ -6,12 +6,16 @@ import re
 from dotenv import load_dotenv
 import torch
 from pinecone import Pinecone, ServerlessSpec
+import json
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_google_genai import GoogleGenerativeAI
+# from langchain_google_genai import GoogleGenerativeAI
+import google.generativeai as genai
 from langchain_core.prompts import PromptTemplate
+
+from constaint import *
 
 load_dotenv()
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -123,20 +127,32 @@ def save_to_db(pdf, namespace = 'default'):
         "message": "Save to Pinecone successfully",
     }
 
-message = save_to_db('app/assest/pdf/main.pdf')
-print(message)
+# message = save_to_db('app/assest/pdf/main.pdf')
+# print(message)
 
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+
+question_prompt = PromptTemplate(
+    template=PROMPT_TEMPLATE_CREATE_QUIZ,
+    input_variables=["text"]
+)
+quiz_questions = []
 def generate_quiz(pdf):
     chunks = split_documents_into_chunks(pdf)
-    prompt = PromptTemplate.from_template("""
-        Generate quiz questions based on the following text. The output must be in JSON format.
-        Requirements:
-            + Generate multiple-choice and Yes/No question only
-            + Each question corresponding with multiple-choice should be 4 options
-            + Clearly indicate the correct answer.
-            + Provide a brief explanation for why the correct answer is correct.
-            + The output format must be valid JSON.
-    """)
+    for chunk in chunks:
+        prompt = question_prompt.format(text=chunk.page_content)
+        # response = llm.invoke(input=prompt)
+        response = model.generate_content(prompt)
 
+        try:
+            raw_text = response.candidates[0].content.parts[0].text
+            json_text = raw_text.strip("```json").strip("```")
+            json_text = re.sub(r"\n", " ", json_text)
+            quiz_data = json.loads(json_text)
+            quiz_questions.append(quiz_data)
+        except json.JSONDecodeError:
+            print("❌ Error decoding JSON response:", response)
 
 generate_quiz('app/assest/pdf/main.pdf')
+print(quiz_questions[0])
