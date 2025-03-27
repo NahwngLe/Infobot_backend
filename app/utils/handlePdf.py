@@ -2,7 +2,7 @@ from PIL import Image
 from pdf2image import convert_from_bytes
 import pytesseract
 from langdetect import detect
-
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 def detectLang(pdf_bytes):
     images = convert_from_bytes(pdf_bytes)
     
@@ -31,3 +31,10 @@ def pdfBytesToText(pdf_bytes):
         texts += pytesseract.image_to_string(image, lang=lang)
     
     return texts, lang
+
+with open("app/assest/pdf/main.pdf", "rb") as f:
+    pdf_bytes = f.read()
+
+text, detected_lang = pdfBytesToText(pdf_bytes)
+print(f"Detected Language: {detected_lang}")
+print(f"Extracted Text: {text}")
