@@ -6,6 +6,7 @@ import re
 from dotenv import load_dotenv
 import torch
 import json
+import time
 
 from pathlib import Path
 import hashlib
@@ -101,7 +102,7 @@ def split_documents_into_chunks(pdf, chunk_size=512, chunk_overlap=100):
         # Remove /n in text
         text.page_content = re.sub(r"\n", " ", text.page_content)
 
-    print(len(texts))
+    # print(len(texts))
     # print(len(documents))
     # for doc in documents:
     #     print(doc.metadata)
@@ -119,6 +120,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
     vectors, metadata, chunks = embedding_text(pdf)
     pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
     print(pdf_name)
+
     if INDEX_NAME not in pc.list_indexes().names():
         pc.create_index(
             name=INDEX_NAME,
@@ -128,7 +130,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
 
     pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
 
-    existing_file = db.users_pdf_files.find_one({"file_hash": pdf_hash})
+    existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash})
     if existing_file:
         return {
             "message": "File already exists",
@@ -138,10 +140,15 @@ def save_to_db(pdf, namespace = 'default', user='default'):
         }
 
     index = pc.Index(INDEX_NAME)
+
+    #Vector embedding
     vector_pinecone = []
+    #user - pdf_hash link db
     users_pdf_files = []
+    #Chunks db
     documents_mongo = []
-    for i, (d, e) in enumerate(zip(chunks, vectors)):  # Thêm chỉ mục `i`
+
+    for i, (d, e) in enumerate(zip(chunks, vectors)):
         selected_metadata = {
             "user_id": user,
             "pdf_name": pdf_name,
@@ -169,17 +176,20 @@ def save_to_db(pdf, namespace = 'default', user='default'):
             "subpage": d.metadata.get("subpage"),
             "total_pages": d.metadata.get("total_pages"),
         })
+
         vector_pinecone.append((
             str(i),
             e,
             {**selected_metadata, "text": d.page_content}  # Metadata phải là dictionary
         ))
 
+    #Add to Pinecone
     index.upsert(
         vectors=vector_pinecone,
         namespace=namespace
     )
 
+    # Add to MongoDb
     db.users_pdf_files.insert_many(users_pdf_files)
     db.documents.insert_many(documents_mongo)
 
@@ -191,9 +201,28 @@ message = save_to_db('app/assest/pdf/main.pdf')
 print(message)
 
 
-quiz_questions = []
-def generate_quiz(pdf):
+def generate_quiz(pdf, user='default'):
+    start = time.time()
     chunks = split_documents_into_chunks(pdf)
+    metadata = [chunk.metadata for chunk in chunks]
+    pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
+    quiz_name = pdf_name
+    pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
+
+    # # If existing then create a copy of quiz
+    # existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash})
+    # if existing_file:
+    #     match = bool(re.search(r"\(\d+\)$", (Cai nay phai tim ben quiz)["metadata"]["quiz_name"]))
+    #     if match:
+    #         x = re.findall(r"(\d)", existing_file["metadata"]["quiz_name"])
+    #         x_new = str(int(x[-1]) + 1) + ")"
+    #         quiz_name = re.sub(r"(\d)\)$", x_new, existing_file["metadata"]["quiz_name"])
+    #     else:
+    #         quiz_name = existing_file["metadata"]["quiz_name"] + "(1)"
+
+    quiz_questions = []
+    quiz_to_db = []
+
     for chunk in chunks:
         prompt = question_prompt.format(text=chunk.page_content)
         # response = llm.invoke(input=prompt)
@@ -204,9 +233,41 @@ def generate_quiz(pdf):
             json_text = raw_text.strip("```json").strip("```")
             json_text = re.sub(r"\n", " ", json_text)
             quiz_data = json.loads(json_text)
+
+            if isinstance(quiz_data, dict):
+                quiz_data = [quiz_data]
+
             quiz_questions.append(quiz_data)
+
         except json.JSONDecodeError:
             print("❌ Error decoding JSON response:", response)
+    # flat_list = [item for sublist in quiz_questions for item in sublist]
+    # print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
+    metadata_info = {
+        "user": user,
+        "quiz_name": quiz_name,
+        "pdf_name": pdf_name,
+        "pdf_hash": pdf_hash
+    }
+    i=0
+    for quiz_question in quiz_questions:
+        for quiz in quiz_question:
+            if isinstance(quiz, dict):
+                quiz["metadata"] = metadata_info
+                quiz_to_db.append(quiz)
+            else:
+                print("❌ Invalid quiz format:", quiz)
 
-# generate_quiz('app/assest/pdf/main.pdf')
-# print(quiz_questions[0])
+    end = time.time()
+    print(f"Create quiz take {end - start} second ")
+
+    end_save = time.time()
+    db.quiz_questions.insert_many(quiz_to_db)
+    print(f"Save quiz to db success, take {end_save - end} second ")
+
+    return quiz_to_db
+
+quiz_questions = generate_quiz('app/assest/pdf/main.pdf')
+# print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
+# print(type(quiz_questions))
+
