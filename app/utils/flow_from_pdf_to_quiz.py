@@ -5,8 +5,12 @@ import os
 import re
 from dotenv import load_dotenv
 import torch
-from pinecone import Pinecone, ServerlessSpec
 import json
+
+from pathlib import Path
+import hashlib
+from pymongo.mongo_client import MongoClient
+from pinecone import Pinecone, ServerlessSpec
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -17,6 +21,7 @@ from langchain_core.prompts import PromptTemplate
 
 from constaint import *
 
+#API KEY
 load_dotenv()
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -25,10 +30,33 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN")
 os.environ["HF_TOKEN"] = HF_TOKEN
 
+#Pinecone
 PINECONE_ENVIRONMENT = "us-east-1"
 INDEX_NAME = "langchainvectors"
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
+
+#MongoDb
+uri = "mongodb+srv://nhanlequy12:nhanhero09@nhancluster.rfxde.mongodb.net/your_database?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
+client = MongoClient(uri)
+db = client["Infobot"]
+
+#Embedding model
+model_name = "sentence-transformers/all-MiniLM-L6-v2"
+model_kwargs = {'device': 'cuda' if torch.cuda.is_available() else 'cpu'}
+embeddings = HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
+
+#Generative AI
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+
+#PromptTemplate
+question_prompt = PromptTemplate(
+    template=PROMPT_TEMPLATE_CREATE_QUIZ,
+    input_variables=["text"]
+)
+
+
 def load_document(pdf):
     file_loader = PyPDFLoader(pdf)
     document = file_loader.load()
@@ -80,20 +108,17 @@ def split_documents_into_chunks(pdf, chunk_size=512, chunk_overlap=100):
     return texts
 
 def embedding_text(pdf):
-    model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    model_kwargs = {'device': 'cuda' if torch.cuda.is_available() else 'cpu'}
     chunks = split_documents_into_chunks(pdf)
-    # Initial embedding model
-    embeddings = HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
 
     # Embedding queries
     vectors = [embeddings.embed_query(chunk.page_content) for chunk in chunks]
     metadata = [chunk.metadata for chunk in chunks]
     return vectors, metadata, chunks
 
-def save_to_db(pdf, namespace = 'default'):
+def save_to_db(pdf, namespace = 'default', user='default'):
     vectors, metadata, chunks = embedding_text(pdf)
-
+    pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
+    print(pdf_name)
     if INDEX_NAME not in pc.list_indexes().names():
         pc.create_index(
             name=INDEX_NAME,
@@ -101,17 +126,49 @@ def save_to_db(pdf, namespace = 'default'):
             metric="cosine"
         )
 
-    index = pc.Index(INDEX_NAME)
-    vector_pinecone = []
-    for i, (d, e) in enumerate(zip(chunks, vectors)):  # Thêm chỉ mục `i`
-        selected_metadata = {
-            "page": d.metadata.get("page"),
-            "page_label": d.metadata.get("page_label"),
-            "source": d.metadata.get("source"),
-            "subpage": d.metadata.get("subpage"),
-            "total_pages": d.metadata.get("total_pages")
+    pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
+
+    existing_file = db.users_pdf_files.find_one({"file_hash": pdf_hash})
+    if existing_file:
+        return {
+            "message": "File already exists",
+            # "filename": existing_file["filename"],
+            # "pdf_id": str(existing_file["pdf_id"]),
+            # "content": existing_file["content"],
         }
 
+    index = pc.Index(INDEX_NAME)
+    vector_pinecone = []
+    users_pdf_files = []
+    documents_mongo = []
+    for i, (d, e) in enumerate(zip(chunks, vectors)):  # Thêm chỉ mục `i`
+        selected_metadata = {
+            "user_id": user,
+            "pdf_name": pdf_name,
+            "pdf_name_hash": pdf_hash,
+            "source": d.metadata.get("source"),
+            "page": d.metadata.get("page"),
+            "subpage": d.metadata.get("subpage"),
+            "total_pages": d.metadata.get("total_pages"),
+        }
+
+        users_pdf_files.append({
+            "user_id": user,
+            "pdf_name": pdf_name,
+            "pdf_name_hash": pdf_hash,
+            "source": d.metadata.get("source"),
+            "total_pages": d.metadata.get("total_pages"),
+        })
+
+        documents_mongo.append({
+            "text": d.page_content,
+            "pdf_name": pdf_name,
+            "pdf_name_hash": pdf_hash,
+            "source": d.metadata.get("source"),
+            "page": d.metadata.get("page"),
+            "subpage": d.metadata.get("subpage"),
+            "total_pages": d.metadata.get("total_pages"),
+        })
         vector_pinecone.append((
             str(i),
             e,
@@ -123,20 +180,17 @@ def save_to_db(pdf, namespace = 'default'):
         namespace=namespace
     )
 
+    db.users_pdf_files.insert_many(users_pdf_files)
+    db.documents.insert_many(documents_mongo)
+
     return {
-        "message": "Save to Pinecone successfully",
+        "message": "Save to Pinecone, MongoDb successfully",
     }
 
-# message = save_to_db('app/assest/pdf/main.pdf')
-# print(message)
+message = save_to_db('app/assest/pdf/main.pdf')
+print(message)
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
-question_prompt = PromptTemplate(
-    template=PROMPT_TEMPLATE_CREATE_QUIZ,
-    input_variables=["text"]
-)
 quiz_questions = []
 def generate_quiz(pdf):
     chunks = split_documents_into_chunks(pdf)
@@ -154,5 +208,5 @@ def generate_quiz(pdf):
         except json.JSONDecodeError:
             print("❌ Error decoding JSON response:", response)
 
-generate_quiz('app/assest/pdf/main.pdf')
-print(quiz_questions[0])
+# generate_quiz('app/assest/pdf/main.pdf')
+# print(quiz_questions[0])
