@@ -240,7 +240,7 @@ def generate_quiz(pdf, user='default'):
             quiz_questions.append(quiz_data)
 
         except json.JSONDecodeError:
-            print("❌ Error decoding JSON response:", response)
+            print("Error decoding JSON response:", response)
     # flat_list = [item for sublist in quiz_questions for item in sublist]
     # print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
     metadata_info = {
@@ -256,7 +256,7 @@ def generate_quiz(pdf, user='default'):
                 quiz["metadata"] = metadata_info
                 quiz_to_db.append(quiz)
             else:
-                print("❌ Invalid quiz format:", quiz)
+                print("Invalid quiz format:", quiz)
 
     end = time.time()
     print(f"Create quiz take {end - start} second ")
