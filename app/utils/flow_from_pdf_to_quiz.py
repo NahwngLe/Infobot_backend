@@ -20,7 +20,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import google.generativeai as genai
 from langchain_core.prompts import PromptTemplate
 
-from constaint import *
+from app.utils.constaint import *
 
 #API KEY
 load_dotenv()
@@ -130,7 +130,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
 
     pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
 
-    existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash})
+    existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash, "user": user})
     if existing_file:
         return {
             "message": "File already exists",
@@ -158,7 +158,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
             "subpage": d.metadata.get("subpage"),
             "total_pages": d.metadata.get("total_pages"),
         }
-
+        #Toi uu hieu suat
         users_pdf_files.append({
             "user_id": user,
             "pdf_name": pdf_name,
@@ -190,15 +190,18 @@ def save_to_db(pdf, namespace = 'default', user='default'):
     )
 
     # Add to MongoDb
-    db.users_pdf_files.insert_many(users_pdf_files)
+    db.users_pdf_files.insert_one(users_pdf_files[0])
     db.documents.insert_many(documents_mongo)
 
     return {
-        "message": "Save to Pinecone, MongoDb successfully",
+        "message": "Save to Pinecone, MongoDB successfully",
+        "pinecone_vectors": len(vector_pinecone),  # Số lượng vector lưu vào Pinecone
+        "mongo_users_pdf_files": len(users_pdf_files),  # Số lượng tệp lưu vào users_pdf_files
+        "mongo_documents": len(documents_mongo)  # Số lượng đoạn văn bản lưu vào documents
     }
 
-message = save_to_db('app/assest/pdf/main.pdf')
-print(message)
+# message = save_to_db('app/assest/pdf/main.pdf')
+# print(message)
 
 
 def generate_quiz(pdf, user='default'):
@@ -220,7 +223,7 @@ def generate_quiz(pdf, user='default'):
     #     else:
     #         quiz_name = existing_file["metadata"]["quiz_name"] + "(1)"
 
-    quiz_questions = []
+    quizs = []
     quiz_to_db = []
 
     for chunk in chunks:
@@ -237,7 +240,7 @@ def generate_quiz(pdf, user='default'):
             if isinstance(quiz_data, dict):
                 quiz_data = [quiz_data]
 
-            quiz_questions.append(quiz_data)
+            quizs.append(quiz_data)
 
         except json.JSONDecodeError:
             print("Error decoding JSON response:", response)
@@ -250,7 +253,7 @@ def generate_quiz(pdf, user='default'):
         "pdf_hash": pdf_hash
     }
     i=0
-    for quiz_question in quiz_questions:
+    for quiz_question in quizs:
         for quiz in quiz_question:
             if isinstance(quiz, dict):
                 quiz["metadata"] = metadata_info
@@ -267,7 +270,7 @@ def generate_quiz(pdf, user='default'):
 
     return quiz_to_db
 
-quiz_questions = generate_quiz('app/assest/pdf/main.pdf')
+# quiz_questions = generate_quiz('app/assest/pdf/main.pdf')
 # print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
 # print(type(quiz_questions))
 
