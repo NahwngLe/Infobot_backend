@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 import torch
 import json
 import time
+import gridfs
 
+from fastapi import HTTPException
 from pathlib import Path
 import hashlib
 from pymongo.mongo_client import MongoClient
@@ -41,6 +43,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 uri = "mongodb+srv://nhanlequy12:nhanhero09@nhancluster.rfxde.mongodb.net/your_database?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
 client = MongoClient(uri)
 db = client["Infobot"]
+fs = gridfs.GridFS(db)
 
 #Embedding model
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
@@ -116,21 +119,26 @@ def embedding_text(pdf):
     metadata = [chunk.metadata for chunk in chunks]
     return vectors, metadata, chunks
 
-def save_to_db(pdf, namespace = 'default', user='default'):
+async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
     vectors, metadata, chunks = embedding_text(pdf)
     pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
-    print(pdf_name)
+
+    await prototypeFile.seek(0)
+    file_content = await prototypeFile.read()
+    if not file_content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
 
     if INDEX_NAME not in pc.list_indexes().names():
         pc.create_index(
             name=INDEX_NAME,
-            dimension=384,  # all-MiniLM-L6-v2 có vector kích thước 384
+            dimension=384,
             metric="cosine"
         )
 
     pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
 
-    existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash, "user": user})
+    existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash, "user_id": user})
     if existing_file:
         return {
             "message": "File already exists",
@@ -140,6 +148,8 @@ def save_to_db(pdf, namespace = 'default', user='default'):
         }
 
     index = pc.Index(INDEX_NAME)
+
+    pdf_id = fs.put(file_content, filename=prototypeFile.filename)
 
     #Vector embedding
     vector_pinecone = []
@@ -162,6 +172,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
         users_pdf_files.append({
             "user_id": user,
             "pdf_name": pdf_name,
+            "pdf_id": pdf_id,
             "pdf_name_hash": pdf_hash,
             "source": d.metadata.get("source"),
             "total_pages": d.metadata.get("total_pages"),
@@ -169,6 +180,7 @@ def save_to_db(pdf, namespace = 'default', user='default'):
 
         documents_mongo.append({
             "text": d.page_content,
+            "pdf_id": pdf_id,
             "pdf_name": pdf_name,
             "pdf_name_hash": pdf_hash,
             "source": d.metadata.get("source"),
@@ -196,7 +208,6 @@ def save_to_db(pdf, namespace = 'default', user='default'):
     return {
         "message": "Save to Pinecone, MongoDB successfully",
         "pinecone_vectors": len(vector_pinecone),  # Số lượng vector lưu vào Pinecone
-        "mongo_users_pdf_files": len(users_pdf_files),  # Số lượng tệp lưu vào users_pdf_files
         "mongo_documents": len(documents_mongo)  # Số lượng đoạn văn bản lưu vào documents
     }
 
@@ -265,7 +276,7 @@ def generate_quiz(pdf, user='default'):
     print(f"Create quiz take {end - start} second ")
 
     end_save = time.time()
-    db.quiz_questions.insert_many(quiz_to_db)
+    db.quiz.insert_many(quiz_to_db)
     print(f"Save quiz to db success, take {end_save - end} second ")
 
     return quiz_to_db
