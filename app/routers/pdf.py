@@ -36,10 +36,10 @@ async def upload_pdf_and_save(file: UploadFile = File(...)) :
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get("/get-pdf/{pdf_id}")
-# async def get_pdf(pdf_id: str):
-#     try:
-#         file = fs.get(ObjectId(pdf_id))
-#         return Response(content=file.read(), media_type="application/pdf")
-#     except Exception as e:
-#         raise HTTPException(status_code=404, detail="File not found")
+@router.get("/get-pdf/{pdf_id}")
+async def get_pdf(pdf_id: str):
+    try:
+        file = fs.get(ObjectId(pdf_id))
+        return Response(content=file.read(), media_type="application/pdf")
+    except Exception as e:
+        raise HTTPException(status_code=404, detail="File not found")

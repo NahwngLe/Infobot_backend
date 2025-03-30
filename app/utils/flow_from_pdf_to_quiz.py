@@ -142,21 +142,23 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
     if existing_file:
         return {
             "message": "File already exists",
-            # "filename": existing_file["filename"],
-            # "pdf_id": str(existing_file["pdf_id"]),
-            # "content": existing_file["content"],
+            "pdf_id": existing_file["pdf_id"],
+            "pdf_name_hash": existing_file["pdf_name_hash"],
+            "filename": existing_file["pdf_name"],
+            "content": "",
         }
 
     index = pc.Index(INDEX_NAME)
 
     pdf_id = fs.put(file_content, filename=prototypeFile.filename)
-
+    pdf_id = str(pdf_id)
     #Vector embedding
     vector_pinecone = []
     #user - pdf_hash link db
     users_pdf_files = []
     #Chunks db
     documents_mongo = []
+    texts = ""
 
     for i, (d, e) in enumerate(zip(chunks, vectors)):
         selected_metadata = {
@@ -168,7 +170,7 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
             "subpage": d.metadata.get("subpage"),
             "total_pages": d.metadata.get("total_pages"),
         }
-        #Toi uu hieu suat
+        #Phai toi uu hieu suat cho nay
         users_pdf_files.append({
             "user_id": user,
             "pdf_name": pdf_name,
@@ -177,7 +179,7 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
             "source": d.metadata.get("source"),
             "total_pages": d.metadata.get("total_pages"),
         })
-
+        texts += " " + str(d.page_content)
         documents_mongo.append({
             "text": d.page_content,
             "pdf_id": pdf_id,
@@ -208,7 +210,10 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
     return {
         "message": "Save to Pinecone, MongoDB successfully",
         "pinecone_vectors": len(vector_pinecone),  # Số lượng vector lưu vào Pinecone
-        "mongo_documents": len(documents_mongo)  # Số lượng đoạn văn bản lưu vào documents
+        "mongo_documents": len(documents_mongo),  # Số lượng đoạn văn bản lưu vào documents
+        "pdf_id": pdf_id,
+        "content": texts,
+        "filename": users_pdf_files[0]["pdf_name"],
     }
 
 # message = save_to_db('app/assest/pdf/main.pdf')
