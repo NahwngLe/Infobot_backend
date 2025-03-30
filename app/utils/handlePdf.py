@@ -36,5 +36,5 @@ with open("app/assest/pdf/main.pdf", "rb") as f:
     pdf_bytes = f.read()
 
 text, detected_lang = pdfBytesToText(pdf_bytes)
-print(f"Detected Language: {detected_lang}")
-print(f"Extracted Text: {text}")
+# print(f"Detected Language: {detected_lang}")
+# print(f"Extracted Text: {text}")
