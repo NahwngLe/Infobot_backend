@@ -12,3 +12,4 @@ INDEX_NAME = "langchainvectors"
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(INDEX_NAME)
 index.delete(delete_all=True, namespace="default")
+print("delete success")
