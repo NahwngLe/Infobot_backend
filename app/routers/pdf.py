@@ -42,4 +42,5 @@ async def get_pdf(pdf_id: str):
         file = fs.get(ObjectId(pdf_id))
         return Response(content=file.read(), media_type="application/pdf")
     except Exception as e:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="File not found, please enter valid pdf_id")
+
