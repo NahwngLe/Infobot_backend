@@ -44,3 +44,17 @@ async def get_pdf(pdf_id: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail="File not found, please enter valid pdf_id")
 
+@router.post("/create-quiz")
+async def create_quiz_from_pdf(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="File must be pdf")
+    try:
+        temp_file_path = f"{file.filename}"
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        quiz = await generate_quiz(temp_file_path)
+
+        return quiz
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
