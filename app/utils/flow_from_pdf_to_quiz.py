@@ -184,7 +184,6 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
             "text": d.page_content,
             "pdf_id": pdf_id,
             "pdf_name": pdf_name,
-            "pdf_name_hash": pdf_hash,
             "source": d.metadata.get("source"),
             "page": d.metadata.get("page"),
             "subpage": d.metadata.get("subpage"),
@@ -213,6 +212,7 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
         "mongo_documents": len(documents_mongo),  # Số lượng đoạn văn bản lưu vào documents
         "pdf_id": pdf_id,
         "content": texts,
+        "pdf_name_hash": pdf_hash,
         "filename": users_pdf_files[0]["pdf_name"],
     }
 
@@ -220,13 +220,27 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
 # print(message)
 
 
-def generate_quiz(pdf, user='default'):
+def generate_quiz(pdf_id, user='default'):
     start = time.time()
-    chunks = split_documents_into_chunks(pdf)
-    metadata = [chunk.metadata for chunk in chunks]
-    pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
+    # chunks = split_documents_into_chunks(pdf)
+    # metadata = [chunk.metadata for chunk in chunks]
+    # pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
+    query = {"pdf_id": pdf_id}
+
+    result = db.users_pdf_files.find_one(query)
+    if not result:
+        raise HTTPException(status_code=404, detail="No document found with this pdf_id")
+    print(result)
+    pdf_name = result["pdf_name"]
     quiz_name = pdf_name
-    pdf_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
+    pdf_name_hash = result["pdf_name_hash"]
+
+    query_take_document = {"pdf_id": pdf_id}
+    result_list_documents = db.documents.find(query_take_document)
+    print(result_list_documents)
+    result_list_documents = list(result_list_documents)
+
+    chunks = [document["text"] for document in result_list_documents]
 
     # # If existing then create a copy of quiz
     # existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash})
@@ -243,7 +257,7 @@ def generate_quiz(pdf, user='default'):
     quiz_to_db = []
 
     for chunk in chunks:
-        prompt = question_prompt.format(text=chunk.page_content)
+        prompt = question_prompt.format(text=chunk)
         # response = llm.invoke(input=prompt)
         response = model.generate_content(prompt)
 
@@ -267,7 +281,8 @@ def generate_quiz(pdf, user='default'):
         "user": user,
         "quiz_name": quiz_name,
         "pdf_name": pdf_name,
-        "pdf_name_hash": pdf_hash
+        "pdf_id": pdf_id,
+        "pdf_name_hash": pdf_name_hash
     }
 
     for quiz_question in quizs:
@@ -288,7 +303,8 @@ def generate_quiz(pdf, user='default'):
     return {
         "message": "Create quiz success!!",
         "quiz_name": quiz_name,
-        "pdf_name_hash": pdf_hash,
+        "pdf_id": pdf_id,
+        "pdf_name_hash": pdf_name_hash,
     }
 
 # quiz_questions = generate_quiz('app/assest/pdf/main.pdf')
