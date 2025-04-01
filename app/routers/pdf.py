@@ -53,8 +53,28 @@ async def create_quiz_from_pdf(file: UploadFile = File(...)):
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        quiz = await generate_quiz(temp_file_path)
+        quiz = generate_quiz(temp_file_path)
 
         return quiz
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/get-quiz/{pdf_name_hash}")
+async def get_quiz(pdf_name_hash: str):
+    try:
+        query = {"metadata.pdf_name_hash": pdf_name_hash}
+        result = db.quiz.find(query)
+
+        #db.quiz.find(query) returns a Cursor object from PyMongo, not a Python dictionary.
+        result = list(result)
+
+        if not result or result == {}:
+            raise HTTPException(status_code=404, detail="No quizzez found for this pdf_name_hash")
+
+        for quiz in result:
+            quiz["_id"] = str(quiz["_id"])
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal sever error: {str(e)}")
