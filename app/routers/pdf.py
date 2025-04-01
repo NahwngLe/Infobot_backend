@@ -45,24 +45,20 @@ async def get_pdf(pdf_id: str):
         raise HTTPException(status_code=404, detail="File not found, please enter valid pdf_id")
 
 @router.post("/create-quiz")
-async def create_quiz_from_pdf(file: UploadFile = File(...)):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="File must be pdf")
-    try:
-        temp_file_path = f"{file.filename}"
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+async def create_quiz_from_pdf(pdf_id: str):
 
-        quiz = generate_quiz(temp_file_path)
+    try:
+        quiz = generate_quiz(pdf_id)
 
         return quiz
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/get-quiz/{pdf_name_hash}")
-async def get_quiz(pdf_name_hash: str):
+@router.get("/get-quiz/{pdf_id}")
+async def get_quiz(pdf_id: str):
     try:
-        query = {"metadata.pdf_name_hash": pdf_name_hash}
+        query = {"metadata.pdf_id": pdf_id}
         result = db.quiz.find(query)
 
         #db.quiz.find(query) returns a Cursor object from PyMongo, not a Python dictionary.
