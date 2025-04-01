@@ -257,6 +257,7 @@ def generate_quiz(pdf, user='default'):
                 quiz_data = [quiz_data]
 
             quizs.append(quiz_data)
+            time.sleep(1)
 
         except json.JSONDecodeError:
             print("Error decoding JSON response:", response)
@@ -266,9 +267,9 @@ def generate_quiz(pdf, user='default'):
         "user": user,
         "quiz_name": quiz_name,
         "pdf_name": pdf_name,
-        "pdf_hash": pdf_hash
+        "pdf_name_hash": pdf_hash
     }
-    i=0
+
     for quiz_question in quizs:
         for quiz in quiz_question:
             if isinstance(quiz, dict):
@@ -284,7 +285,11 @@ def generate_quiz(pdf, user='default'):
     db.quiz.insert_many(quiz_to_db)
     print(f"Save quiz to db success, take {end_save - end} second ")
 
-    return quiz_to_db
+    return {
+        "message": "Create quiz success!!",
+        "quiz_name": quiz_name,
+        "pdf_name_hash": pdf_hash,
+    }
 
 # quiz_questions = generate_quiz('app/assest/pdf/main.pdf')
 # print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
