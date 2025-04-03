@@ -36,16 +36,42 @@ async def upload_pdf_and_save(file: UploadFile = File(...)) :
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/get-all-pdf/{user}")
+def get_all_pdf(user: str):
+    try:
+        query = {"user_id": user}
+        results = db.users_pdf_files.find(query)
+        results = list(results)
+
+        if not results:
+            raise HTTPException(status_code=404, detail="No pdf found for that user id")
+
+        pdf_ids = []
+
+        for result in results:
+            data = {
+                "pdf_id": result["pdf_id"],
+                "pdf_name": result["pdf_name"]
+            }
+
+            pdf_ids.append(data)
+        return pdf_ids
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/get-pdf/{pdf_id}")
 async def get_pdf(pdf_id: str):
     try:
         file = fs.get(ObjectId(pdf_id))
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found, please enter valid pdf_id")
         return Response(content=file.read(), media_type="application/pdf")
     except Exception as e:
-        raise HTTPException(status_code=404, detail="File not found, please enter valid pdf_id")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create-quiz")
-async def create_quiz_from_pdf(pdf_id: str):
+def create_quiz_from_pdf(pdf_id: str):
 
     try:
         quiz = generate_quiz(pdf_id)
@@ -65,7 +91,7 @@ async def get_quiz(pdf_id: str):
         result = list(result)
 
         if not result or result == {}:
-            raise HTTPException(status_code=404, detail="No quizzez found for this pdf_name_hash")
+            raise HTTPException(status_code=404, detail="No quizzes found for this pdf_name_hash")
 
         for quiz in result:
             quiz["_id"] = str(quiz["_id"])
