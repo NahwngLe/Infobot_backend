@@ -51,7 +51,8 @@ def get_all_pdf(user: str):
         for result in results:
             data = {
                 "pdf_id": result["pdf_id"],
-                "pdf_name": result["pdf_name"]
+                "pdf_name": result["pdf_name"],
+                "pdf_name_hash": result["pdf_name_hash"],
             }
 
             pdf_ids.append(data)
@@ -70,7 +71,7 @@ async def get_pdf(pdf_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/create-quiz")
+@router.get("/create-quiz/{pdf_id}")
 def create_quiz_from_pdf(pdf_id: str):
 
     try:
