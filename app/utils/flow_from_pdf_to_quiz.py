@@ -176,6 +176,7 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
             "pdf_name": pdf_name,
             "pdf_id": pdf_id,
             "pdf_name_hash": pdf_hash,
+            "quiz_list": {},
             "source": d.metadata.get("source"),
             "total_pages": d.metadata.get("total_pages"),
         })
@@ -222,43 +223,51 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
 
 def generate_quiz(pdf_id, user='default'):
     start = time.time()
-    # chunks = split_documents_into_chunks(pdf)
-    # metadata = [chunk.metadata for chunk in chunks]
-    # pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
-    query = {"pdf_id": pdf_id}
 
+    query = {"pdf_id": pdf_id}
     result = db.users_pdf_files.find_one(query)
     if not result:
         raise HTTPException(status_code=404, detail="No document found with this pdf_id")
-    print(result)
+
     pdf_name = result["pdf_name"]
-    quiz_name = pdf_name
     pdf_name_hash = result["pdf_name_hash"]
 
     query_take_document = {"pdf_id": pdf_id}
     result_list_documents = db.documents.find(query_take_document)
-    print(result_list_documents)
     result_list_documents = list(result_list_documents)
-
     chunks = [document["text"] for document in result_list_documents]
 
-    # # If existing then create a copy of quiz
-    # existing_file = db.users_pdf_files.find_one({"pdf_name_hash": pdf_hash})
-    # if existing_file:
-    #     match = bool(re.search(r"\(\d+\)$", (Cai nay phai tim ben quiz)["metadata"]["quiz_name"]))
-    #     if match:
-    #         x = re.findall(r"(\d)", existing_file["metadata"]["quiz_name"])
-    #         x_new = str(int(x[-1]) + 1) + ")"
-    #         quiz_name = re.sub(r"(\d)\)$", x_new, existing_file["metadata"]["quiz_name"])
-    #     else:
-    #         quiz_name = existing_file["metadata"]["quiz_name"] + "(1)"
+    existing_quizzes = list(db.quiz.find({"metadata.pdf_id": pdf_id}, {"metadata.quiz_name": 1}))
+    existing_quiz_names = [q["metadata"]["quiz_name"] for q in existing_quizzes]
+
+    base_quiz_name = pdf_name
+    quiz_name = base_quiz_name
+    count = 1
+    while quiz_name in existing_quiz_names:
+        quiz_name = f"{base_quiz_name} ({count})"
+        count += 1
+
+    # Tạo quiz_list nếu chưa có
+    existing_quiz = db.users_pdf_files.find_one({"pdf_id": pdf_id})
+    quiz_list = existing_quiz.get("quiz_list", {}) if existing_quiz else {}
+
+    quiz_name = str(quiz_name)
+    # Thêm quiz mới vào danh sách
+    quiz_list[quiz_name] = quiz_name
+
+    metadata_info = {
+        "user": user,
+        "quiz_name": quiz_name,
+        "pdf_name": pdf_name,
+        "pdf_id": pdf_id,
+        "pdf_name_hash": pdf_name_hash,
+    }
 
     quizs = []
     quiz_to_db = []
 
     for chunk in chunks:
         prompt = question_prompt.format(text=chunk)
-        # response = llm.invoke(input=prompt)
         response = model.generate_content(prompt)
 
         try:
@@ -275,15 +284,7 @@ def generate_quiz(pdf_id, user='default'):
 
         except json.JSONDecodeError:
             print("Error decoding JSON response:", response)
-    # flat_list = [item for sublist in quiz_questions for item in sublist]
-    # print(json.dumps(quiz_questions, indent=4, ensure_ascii=False))
-    metadata_info = {
-        "user": user,
-        "quiz_name": quiz_name,
-        "pdf_name": pdf_name,
-        "pdf_id": pdf_id,
-        "pdf_name_hash": pdf_name_hash
-    }
+            continue
 
     for quiz_question in quizs:
         for quiz in quiz_question:
@@ -298,6 +299,12 @@ def generate_quiz(pdf_id, user='default'):
 
     end_save = time.time()
     db.quiz.insert_many(quiz_to_db)
+
+    db.users_pdf_files.update_one(
+        {"pdf_id": pdf_id},
+        {"$set": {"quiz_list": quiz_list}}
+    )
+
     print(f"Save quiz to db success, take {end_save - end} second ")
 
     return {
