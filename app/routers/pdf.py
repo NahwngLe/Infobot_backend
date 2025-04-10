@@ -85,17 +85,39 @@ def create_quiz_from_pdf(pdf_id: str):
 @router.get("/get-quiz/{pdf_id}")
 async def get_quiz(pdf_id: str):
     try:
-        query = {"metadata.pdf_id": pdf_id}
-        result = db.quiz.find(query)
-
-        #db.quiz.find(query) returns a Cursor object from PyMongo, not a Python dictionary.
-        result = list(result)
+        pipeline = [
+            {
+                "$match": {
+                    "metadata.pdf_id": pdf_id
+                }},
+            {
+                "$group": {
+                    "_id": "$metadata.quiz_name",
+                    "quizzes": {
+                        "$push": {
+                            "_id": "$_id",
+                            "question": "$question",
+                            "options": "$options",
+                            "answer": "$answer",
+                            "metadata": "$metadata"
+                        }}}},
+            {
+                "$project": {
+                    "_id": 0,
+                    "quiz_name": "$_id",
+                    "quizzes": 1
+                }}
+        ]
+        result = list(db.quiz.aggregate(pipeline))
 
         if not result or result == {}:
             raise HTTPException(status_code=404, detail="No quizzes found for this pdf_name_hash")
 
-        for quiz in result:
-            quiz["_id"] = str(quiz["_id"])
+        # convert ObjectId to str
+        for group in result:
+            for quiz in group["quizzes"]:
+                quiz["_id"] = str(quiz["_id"])
+
 
         return result
 
