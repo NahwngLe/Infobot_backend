@@ -111,7 +111,9 @@ async def get_quiz(pdf_id: str):
         result = list(db.quiz.aggregate(pipeline))
 
         if not result or result == {}:
-            raise HTTPException(status_code=404, detail="No quizzes found for this pdf_name_hash")
+            return
+            # raise HTTPException(status_code=404, detail="No quizzes found for this pdf_name_hash")
+
 
         # convert ObjectId to str
         for group in result:

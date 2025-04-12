@@ -14,13 +14,13 @@ PROMPT_TEMPLATE_CREATE_QUIZ = """
         - "question": The question,
         - "options": ["True", "False"],
         - "answer": The index number (0 or 1) of the correct answer in the options array.
-        - "explanation" : The explanation to the answer based on the text
+        - "explanation" : The explanation to the answer
        
     2. For Multiple Choice questions:
         - "question": The question,
         - "options": An array of 4 strings representing the choices,
         - "answer": The index number (0-3) of the correct answer in the options array.
-        - "explanation" : The explanation to the answer based on the text
+        - "explanation" : The explanation to the answer
     
     Example:
     
