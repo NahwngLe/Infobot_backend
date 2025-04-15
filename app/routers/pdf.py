@@ -99,6 +99,7 @@ async def get_quiz(pdf_id: str):
                             "question": "$question",
                             "options": "$options",
                             "answer": "$answer",
+                            "explanation": "$explanation",
                             "metadata": "$metadata"
                         }}}},
             {
