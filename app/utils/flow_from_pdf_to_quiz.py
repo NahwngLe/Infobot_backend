@@ -54,11 +54,6 @@ embeddings = HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwa
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
-#PromptTemplate
-question_prompt = PromptTemplate(
-    template=PROMPT_TEMPLATE_CREATE_QUIZ,
-    input_variables=["text"]
-)
 
 
 def load_document(pdf):
@@ -221,7 +216,7 @@ async def save_to_db(pdf, prototypeFile, namespace = 'default', user='default'):
 # print(message)
 
 
-def generate_quiz(pdf_id, user='default'):
+def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
     start = time.time()
 
     query = {"pdf_id": pdf_id}
@@ -241,7 +236,7 @@ def generate_quiz(pdf_id, user='default'):
     existing_quiz_names = [q["metadata"]["quiz_name"] for q in existing_quizzes]
 
     base_quiz_name = pdf_name
-    quiz_name = base_quiz_name
+    quiz_name = base_quiz_name + f"_lang({language_of_quiz})"
     count = 1
     while quiz_name in existing_quiz_names:
         quiz_name = f"{base_quiz_name} ({count})"
@@ -252,7 +247,6 @@ def generate_quiz(pdf_id, user='default'):
     quiz_list = existing_quiz.get("quiz_list", {}) if existing_quiz else {}
 
     quiz_name = str(quiz_name)
-    # Thêm quiz mới vào danh sách
     quiz_list[quiz_name] = quiz_name
 
     metadata_info = {
@@ -261,10 +255,22 @@ def generate_quiz(pdf_id, user='default'):
         "pdf_name": pdf_name,
         "pdf_id": pdf_id,
         "pdf_name_hash": pdf_name_hash,
+        "language": language_of_quiz
     }
 
     quizs = []
     quiz_to_db = []
+
+    # Chọn prompt theo ngôn ngữ
+    if language_of_quiz.lower() == 'vn':
+        selected_prompt = PROMPT_TEMPLATE_CREATE_QUIZ_VIETNAMESE
+    else:
+        selected_prompt = PROMPT_TEMPLATE_CREATE_QUIZ_ENGLISH
+
+    question_prompt = PromptTemplate(
+        template=selected_prompt,
+        input_variables=["text"]
+    )
 
     for chunk in chunks:
         prompt = question_prompt.format(text=chunk)

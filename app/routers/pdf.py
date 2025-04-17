@@ -72,10 +72,10 @@ async def get_pdf(pdf_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/create-quiz/{pdf_id}")
-def create_quiz_from_pdf(pdf_id: str):
+def create_quiz_from_pdf(pdf_id: str, language_of_quiz: str):
 
     try:
-        quiz = generate_quiz(pdf_id)
+        quiz = generate_quiz(pdf_id, language_of_quiz=language_of_quiz)
 
         return quiz
 
