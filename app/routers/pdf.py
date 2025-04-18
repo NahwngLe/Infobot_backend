@@ -5,6 +5,8 @@ from pdf2image import convert_from_bytes
 import io
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from fastapi.responses import StreamingResponse
+import json
 import shutil
 from bson import ObjectId
 import hashlib
@@ -72,15 +74,19 @@ async def get_pdf(pdf_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/create-quiz/{pdf_id}")
-def create_quiz_from_pdf(pdf_id: str, language_of_quiz: str):
+def create_quiz_from_pdf(
+    pdf_id: str,
+    language_of_quiz: str,
+):
+    def stream():
+        try:
+            for result in generate_quiz(pdf_id, language_of_quiz=language_of_quiz):
+                yield json.dumps(result) + "\n"
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
 
-    try:
-        quiz = generate_quiz(pdf_id, language_of_quiz=language_of_quiz)
+    return StreamingResponse(stream(), media_type="application/json")
 
-        return quiz
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/get-quiz/{pdf_id}")
 async def get_quiz(pdf_id: str):
