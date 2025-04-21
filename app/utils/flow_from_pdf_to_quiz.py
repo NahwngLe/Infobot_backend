@@ -258,6 +258,7 @@ def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
         if not result_list_documents:
             # raise HTTPException(status_code=404, detail=f"No content found for page batch {page}.")
             return
+
         # Convert into chunks
         pdf_name = result["pdf_name"]
         pdf_name_hash = result["pdf_name_hash"]
