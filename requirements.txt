@@ -1,0 +1,14 @@
+openai==1.68.2
+langchain==0.3.21
+pinecone==5.4.2
+torch==2.6.0
+fastapi==0.115.8
+pymongo==4.11.1
+langchain-community==0.3.20
+google-generativeai==0.8.4
+langchain-core==0.3.49
+more-itertools==10.6.0
+uvicorn==0.34.0
+langchain-huggingface
+python-multipart
+hf_xet
