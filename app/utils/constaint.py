@@ -44,6 +44,7 @@ PROMPT_TEMPLATE_CREATE_QUIZ_ENGLISH = """
     QUESTIONS:
 """
 
+
 PROMPT_TEMPLATE_CREATE_QUIZ_VIETNAMESE = """
     Bạn là chuyên gia trong việc tạo câu hỏi Đúng/Sai và Trắc nghiệm dựa trên tài liệu.
     Mục tiêu của bạn là giúp học sinh ôn tập cho bài kiểm tra.

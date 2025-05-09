@@ -1,15 +1,13 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Response
-
 from fastapi.responses import StreamingResponse
+
 import shutil
+import json
 from bson import ObjectId
 
-from app.utils.flow_from_pdf_to_quiz import *
+from app.utils import save_to_db, generate_quiz
+from app.database import *
 
-#MongoDb
-uri = "mongodb+srv://nhanlequy12:nhanhero09@nhancluster.rfxde.mongodb.net/your_database?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
-client = MongoClient(uri)
-db = client["Infobot"]
 
 router = APIRouter(prefix="/pdf", tags=["PDF"])
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'

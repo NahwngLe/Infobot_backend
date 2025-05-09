@@ -1,7 +1,6 @@
 openai==1.68.2
 langchain==0.3.21
 pinecone==5.4.2
-torch==2.6.0
 fastapi==0.115.8
 pymongo==4.11.1
 langchain-community==0.3.20
@@ -12,3 +11,7 @@ uvicorn==0.34.0
 langchain-huggingface
 python-multipart
 hf_xet
+langdetect==1.0.9
+pdf2image==1.17.0
+pytesseract==0.3.13
+prometheus-fastapi-instrumentator==7.1.0

@@ -2,8 +2,11 @@ from fastapi import FastAPI
 from app.routers import pdf
 from fastapi.middleware.cors import CORSMiddleware
 
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
+
+Instrumentator().instrument(app).expose(app)
 
 # Cấu hình CORS
 app.add_middleware(
