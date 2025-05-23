@@ -6,5 +6,3 @@
 #     start_page = min((page - 1) * batch_size + 1, total_pages)
 #     end_page = min(start_page + batch_size - 1, total_pages)
 #     print(f"Start: {start_page} - End: {end_page}")
-
-
