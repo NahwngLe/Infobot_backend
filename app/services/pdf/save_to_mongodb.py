@@ -1,7 +1,7 @@
 from app.database import *
 
 async def save_pdf_to_mongo(pdf_name, prototypefile,
-                            vectors, metadata, chunks,
+                            metadata, chunks,
                             pdf_name_hash, file_content,
                             user):
 

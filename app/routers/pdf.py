@@ -33,7 +33,7 @@ async def upload_pdf_and_save(file: UploadFile = File(...)) :
 def get_all_pdf(user: str):
     try:
         query = {"user_id": user}
-        results = db.users_pdf_files.find(query)
+        results = db.users_pdfs.find(query)
         results = list(results)
 
         if not results:
@@ -52,7 +52,7 @@ def get_all_pdf(user: str):
         return pdf_ids
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=501, detail=str(e))
 
 @router.get("/get-pdf/{pdf_id}")
 async def get_pdf(pdf_id: str):

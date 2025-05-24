@@ -11,14 +11,14 @@ from app.database import *
 
 async def save_to_db(pdf, prototypefile, user='default'):
     try:
-        # 1. Embedding
+        # 1. Embedding pdf content
         vectors, metadata, chunks = embedding_text(pdf)
         if not vectors or not metadata or not chunks:
             raise HTTPException(status_code=400, detail="Embedding failed or returned empty results")
-
+        # Adding unique pdf name
         pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"]) + "_" + str(user)
 
-        # 2. Read file content
+        # 2. Read file content for GridFs
         await prototypefile.seek(0)
         file_content = await prototypefile.read()
         if not file_content:
@@ -28,9 +28,9 @@ async def save_to_db(pdf, prototypefile, user='default'):
         pdf_name_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
 
         message_from_mongodb = await save_pdf_to_mongo(pdf_name, prototypefile,
-                                                 vectors, metadata, chunks,
-                                                 pdf_name_hash, file_content,
-                                                 user)
+                                                    metadata, chunks,
+                                                    pdf_name_hash, file_content,
+                                                    user)
         return message_from_mongodb
 
     except Exception as e:
