@@ -1,4 +1,3 @@
-import math
 import re
 import json
 import time
@@ -9,6 +8,8 @@ from langchain_core.prompts import PromptTemplate
 
 from app.services.quiz.quiz_prompt import *
 from app.database import *
+from app.config import *
+from app.services.quiz.split_text_into_30_chunk import split_custom_chunk
 
 def generate_quiz_for_chunk(args):
     chunk_content, metadata_info, selected_prompt = args
@@ -45,21 +46,25 @@ def generate_quiz_for_chunk(args):
 def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
     start = time.time()
     # Find pdf if exist
+    print("Find pdf if exist")
     query = {"pdf_id": pdf_id}
     result = db.users_pdfs.find_one(query)
     if not result:
         raise HTTPException(status_code=404, detail="No document found with this pdf_id")
 
     # Take pdf name and hash
+    print("Take pdf name and hash")
     pdf_name = result["pdf_name"]
     pdf_name_hash = result["pdf_name_hash"]
 
     # Take pdf text
+    print("Take pdf text")
     query_2 = {"pdf_id": result["pdf_id"]}
     result_2 = db.documents.find(query_2)
     chunks = [chunk["text"] for chunk in result_2]
 
     # Find duplicate quiz names and add numbers
+    print("Find duplicate quiz names and add numbers")
     existing_quizzes = list(db.quiz.find({"metadata.pdf_id": pdf_id}, {"metadata.quiz_name": 1}))
     existing_quiz_names = [q["metadata"]["quiz_name"] for q in existing_quizzes]
     base_quiz_name = f"{pdf_name}_lang({language_of_quiz})"
@@ -70,6 +75,7 @@ def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
         count += 1
 
     # Adding quiz to quiz_list
+    print("Adding quiz to quiz_list")
     quiz_list = result.get("quiz_list", {})
     quiz_list[quiz_name] = quiz_name
 
@@ -85,14 +91,24 @@ def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
                     if language_of_quiz.lower() == 'vn' \
                     else PROMPT_TEMPLATE_CREATE_QUIZ_ENGLISH
 
-    # Chuẩn bị dữ liệu cho multiprocessing
-    chunk_args = [(chunk, metadata_info, selected_prompt) for chunk in chunks]
+    # Data Preparation for multiprocessing
+    print("Chuẩn bị dữ liệu cho multiprocessing")
+    if len(chunks) <= 30:
+        chunk_args = [(chunk, metadata_info, selected_prompt) for chunk in chunks]
+
+    else:
+        print("Chuẩn bị 30 chunks dữ liệu cho multiprocessing")
+        chunks_30_length = split_custom_chunk(chunks, batch_size=15)
+        chunk_args = [(chunk, metadata_info, selected_prompt) for chunk in chunks_30_length]
 
     # Multiprocessing
+    print(chunk_args[:1])
+    print("Multiprocessing")
     with Pool(cpu_count()) as pool:
         results = pool.map(generate_quiz_for_chunk, chunk_args)
 
     # Collect quizzes
+    print("Collect quizzes")
     quiz_to_db = []
     for quiz_list_chunk in results:
         quiz_to_db.extend(quiz_list_chunk)
