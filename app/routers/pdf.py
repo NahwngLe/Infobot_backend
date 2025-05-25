@@ -1,11 +1,12 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 
 import shutil
-import json
 from bson import ObjectId
 
-from app.utils import save_to_db, generate_quiz
+from app.services.quiz.generator import generate_quiz
+from app.services.pdf.storage import *
+
 from app.database import *
 
 
@@ -69,14 +70,12 @@ def create_quiz_from_pdf(
     pdf_id: str,
     language_of_quiz: str,
 ):
-    def stream():
-        try:
-            for result in generate_quiz(pdf_id, language_of_quiz=language_of_quiz):
-                yield json.dumps(result) + "\n"
-        except Exception as e:
-            yield json.dumps({"error": str(e)}) + "\n"
+    try:
+        result = generate_quiz(pdf_id, language_of_quiz=language_of_quiz)
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
-    return StreamingResponse(stream(), media_type="application/json")
 
 
 @router.get("/get-quiz/{pdf_id}")
