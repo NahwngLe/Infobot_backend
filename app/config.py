@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # API KEY
 load_dotenv()
@@ -19,5 +20,7 @@ INDEX_NAME = "langchainvectors"
 # MongoDb
 uri = "mongodb+srv://nhanlequy12:nhanhero09@nhancluster.rfxde.mongodb.net/your_database?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
 
-
+# Generative AI
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
