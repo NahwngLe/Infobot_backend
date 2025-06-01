@@ -43,11 +43,12 @@ def generate_quiz_for_chunk(args):
         print(f"Error processing chunk: {e}")
         return []
 
-def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
+
+def generate_quiz(pdf_id, language_of_quiz='eng', user_id=''):
     start = time.time()
     # Find pdf if exist
     print("Find pdf if exist")
-    query = {"pdf_id": pdf_id}
+    query = {"pdf_id": pdf_id, "user_id": user_id}
     result = db.users_pdfs.find_one(query)
     if not result:
         raise HTTPException(status_code=404, detail="No document found with this pdf_id")
@@ -80,7 +81,7 @@ def generate_quiz(pdf_id, user='default', language_of_quiz='eng'):
     quiz_list[quiz_name] = quiz_name
 
     metadata_info = {
-        "user": user,
+        "user_id": user_id,
         "quiz_name": quiz_name,
         "pdf_name": pdf_name,
         "pdf_id": pdf_id,

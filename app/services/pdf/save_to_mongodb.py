@@ -3,10 +3,10 @@ from app.database import *
 async def save_pdf_to_mongo(pdf_name, prototypefile,
                             metadata, chunks,
                             pdf_name_hash, file_content,
-                            user):
+                            user_id):
 
     # 1. Check if file already exists
-    existing_file = db.users_pdfs.find_one({"pdf_name_hash": pdf_name_hash, "user_id": user})
+    existing_file = db.users_pdfs.find_one({"pdf_name_hash": pdf_name_hash, "user_id": user_id})
     if existing_file:
         return {
             "message": "File already exists",
@@ -22,7 +22,7 @@ async def save_pdf_to_mongo(pdf_name, prototypefile,
 
     # 3. Prepare users_pdfs table data
     users_pdfs = {
-        "user_id": user,
+        "user_id": user_id,
         "pdf_name": pdf_name,
         "pdf_id": pdf_id,
         "pdf_name_hash": pdf_name_hash,
@@ -36,7 +36,7 @@ async def save_pdf_to_mongo(pdf_name, prototypefile,
     # 4. Prepare documents tables data
     for i, d in enumerate(chunks):
         meta = {
-            "user_id": user,
+            "user_id": user_id,
             "pdf_name": pdf_name,
             "pdf_name_hash": pdf_name_hash,
             "source": d.metadata.get("source"),
