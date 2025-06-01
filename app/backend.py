@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import pdf
+from app.routers import pdf, auth
 from fastapi.middleware.cors import CORSMiddleware
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -19,3 +19,4 @@ app.add_middleware(
 
 #Tich hop router
 app.include_router(pdf.router)
+app.include_router(auth.router)
