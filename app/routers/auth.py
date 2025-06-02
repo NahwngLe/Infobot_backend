@@ -6,7 +6,6 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
 import hashlib
-from bson import ObjectId
 
 from app.database import *
 from app.services.auth.authenticate import authenticate_user
