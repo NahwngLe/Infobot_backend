@@ -16,5 +16,5 @@ pdf2image==1.17.0
 pytesseract==0.3.13
 prometheus-fastapi-instrumentator==7.1.0
 passlib==1.7.4
-python==jose-3.5.0
+python-jose==3.5.0
 bcrypt==4.3.0
