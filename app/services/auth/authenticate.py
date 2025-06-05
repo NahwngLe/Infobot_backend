@@ -9,5 +9,5 @@ def authenticate_user(username, password):
     if not user:
         return False
     if not bcrypt_context.verify(password, user["hash_password"]):
-        return  False
+        return False
     return user

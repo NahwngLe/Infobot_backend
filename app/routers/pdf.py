@@ -29,9 +29,11 @@ def get_current_user_id(token: str = Depends(oauth2_bearer)):
         user_id: str = payload.get("user_id")
         print("user_id", user_id)
         if user_id is None:
+            print("Neu khong cos user id thi chay dong nay")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return user_id
     except JWTError:
+        print("JWTError")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
@@ -84,11 +86,9 @@ async def get_pdf(pdf_id: str, user_id: str = Depends(get_current_user_id)):
         file = fs.get(ObjectId(pdf_id))
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
-
-        metadata = db.users_pdfs.find_one({"pdf_id": ObjectId(pdf_id), "user_id": user_id})
+        metadata = db.users_pdfs.find_one({"pdf_id": pdf_id, "user_id": user_id})
         if not metadata:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
-
         return Response(content=file.read(), media_type="application/pdf")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -97,11 +97,13 @@ async def get_pdf(pdf_id: str, user_id: str = Depends(get_current_user_id)):
 @router.get("/create-quiz/{pdf_id}")
 def create_quiz_from_pdf(pdf_id: str, language_of_quiz: str, user_id: str = Depends(get_current_user_id)):
     try:
-        metadata = db.users_pdfs.find_one({"pdf_id": ObjectId(pdf_id), "user_id": user_id})
+        print("Find pdf")
+        metadata = db.users_pdfs.find_one({"pdf_id": pdf_id, "user_id": user_id})
         if not metadata:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
-
+        print("Chạy hàm tạo quiz")
         result = generate_quiz(pdf_id, language_of_quiz=language_of_quiz, user_id=user_id)
+        print("Trả response")
         return JSONResponse(content=result)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
@@ -110,7 +112,7 @@ def create_quiz_from_pdf(pdf_id: str, language_of_quiz: str, user_id: str = Depe
 @router.get("/get-quiz/{pdf_id}")
 async def get_quiz(pdf_id: str, user_id: str = Depends(get_current_user_id)):
     try:
-        metadata = db.users_pdfs.find_one({"pdf_id": ObjectId(pdf_id), "user_id": user_id})
+        metadata = db.users_pdfs.find_one({"pdf_id": pdf_id, "user_id": user_id})
         if not metadata:
             raise HTTPException(status_code=403, detail="Not authorized to access this quiz")
 

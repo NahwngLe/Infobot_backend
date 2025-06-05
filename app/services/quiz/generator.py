@@ -75,11 +75,6 @@ def generate_quiz(pdf_id, language_of_quiz='eng', user_id=''):
         quiz_name = f"{base_quiz_name} ({count})"
         count += 1
 
-    # Adding quiz to quiz_list
-    print("Adding quiz to quiz_list")
-    quiz_list = result.get("quiz_list", {})
-    quiz_list[quiz_name] = quiz_name
-
     metadata_info = {
         "user_id": user_id,
         "quiz_name": quiz_name,
@@ -94,19 +89,23 @@ def generate_quiz(pdf_id, language_of_quiz='eng', user_id=''):
 
     # Data Preparation for multiprocessing
     print("Chuẩn bị dữ liệu cho multiprocessing")
-    if len(chunks) <= 30:
+    if len(chunks) <= 15:
         chunk_args = [(chunk, metadata_info, selected_prompt) for chunk in chunks]
 
     else:
-        print("Chuẩn bị 30 chunks dữ liệu cho multiprocessing")
+        print("Chuẩn bị 15 chunks dữ liệu cho multiprocessing")
         chunks_30_length = split_custom_chunk(chunks, batch_size=15)
         chunk_args = [(chunk, metadata_info, selected_prompt) for chunk in chunks_30_length]
 
     # Multiprocessing
-    print(chunk_args[:1])
     print("Multiprocessing")
     with Pool(cpu_count()) as pool:
         results = pool.map(generate_quiz_for_chunk, chunk_args)
+
+    # Adding quiz to quiz_list
+    print("Adding quiz to quiz_list")
+    quiz_list = result.get("quiz_list", {})
+    quiz_list[quiz_name] = quiz_name
 
     # Collect quizzes
     print("Collect quizzes")

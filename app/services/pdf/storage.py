@@ -17,7 +17,7 @@ async def save_to_db(pdf, prototypefile, user_id='default'):
         if not vectors or not metadata or not chunks:
             raise HTTPException(status_code=400, detail="Embedding failed or returned empty results")
         # Adding unique pdf name
-        pdf_name = Path(metadata[0]["source"]).stem + "_" + str(metadata[0]["total_pages"])
+        pdf_name = Path(metadata[0]["source"]).stem
 
         # 2. Read file content for GridFs
         print("Read file content for GridFs")
