@@ -7,20 +7,20 @@ services:
     container_name: fastapi
     ports:
       - "8000:8000"
-    networks:
-      - monitoring
-
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - monitoring
-
-networks:
-  monitoring:
-    driver: bridge
+#    networks:
+#      - monitoring
+#
+#  prometheus:
+#    image: prom/prometheus
+#    container_name: prometheus
+#    volumes:
+#      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+#      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml
+#    ports:
+#      - "9090:9090"
+#    networks:
+#      - monitoring
+#
+#networks:
+#  monitoring:
+#    driver: bridge
