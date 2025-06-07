@@ -28,7 +28,7 @@ The `Infobot_backend` is a FastAPI-based backend application designed to process
 1.  **Clone the repository:**
 
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/NahwngLe/Infobot_backend.git
     cd Infobot_backend
     ```
 
