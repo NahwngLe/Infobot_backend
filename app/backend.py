@@ -27,7 +27,3 @@ app.include_router(auth.router)
 @app.on_event("shutdown")
 def shutdown_db():
     client.close()  # Đóng connection
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
