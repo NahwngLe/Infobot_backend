@@ -6,7 +6,9 @@ from fastapi import HTTPException
 
 from app.services.pdf.chunks_embedding import *
 from app.services.pdf.save_to_mongodb import save_pdf_to_mongo
+from app.services.pdf.save_to_pinecone import *
 
+from app.config import INDEX_NAME
 from app.database import *
 
 async def save_to_db(pdf, prototypefile, user_id='default'):
@@ -28,13 +30,17 @@ async def save_to_db(pdf, prototypefile, user_id='default'):
 
         # 3. Hash pdf name for unique pdf
         print("Hash pdf name for unique pdf")
-        pdf_name_hash = hashlib.sha256(pdf_name.encode()).hexdigest()
+        pdf_name_hash = hashlib.sha256(pdf_name.encode()).hexdigest() + user_id
 
-        message_from_mongodb = await save_pdf_to_mongo(pdf_name, prototypefile,
+        mongodb_saved = await save_pdf_to_mongo(pdf_name, prototypefile,
                                                     metadata, chunks,
                                                     pdf_name_hash, file_content,
                                                     user_id)
-        return message_from_mongodb
+
+        pinecone_saved = await save_to_pinecone(pdf_name, pdf_name_hash,
+                                                INDEX_NAME, vectors, metadata, chunks,
+                                                namespace=user_id)
+        return mongodb_saved
 
     except Exception as e:
         import traceback
