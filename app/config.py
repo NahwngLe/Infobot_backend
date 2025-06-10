@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+# from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 # API KEY
 load_dotenv()
@@ -24,3 +26,16 @@ uri = "mongodb+srv://nhanlequy12:nhanhero09@nhancluster.rfxde.mongodb.net/your_d
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
+# # Embedding model
+# model_name = "sentence-transformers/all-mpnet-base-v2"
+# # model_kwargs = {'device': 'cuda' if torch.cuda.is_available() else 'cpu'}
+# embeddings = HuggingFaceEmbeddings(model_name=model_name)
+model_name = "BAAI/bge-large-en-v1.5"
+model_kwargs = {'device': 'cuda'}
+encode_kwargs = {'normalize_embeddings': True}
+embeddings = HuggingFaceBgeEmbeddings(
+    model_name=model_name,
+    # model_kwargs=model_kwargs,
+    encode_kwargs=encode_kwargs,
+    query_instruction="Represent this question for retrieval: "
+)
