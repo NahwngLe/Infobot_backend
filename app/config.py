@@ -4,6 +4,7 @@ import google.generativeai as genai
 # from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
+
 # API KEY
 load_dotenv()
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

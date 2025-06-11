@@ -37,6 +37,9 @@ def save_to_pinecone(pdf_name, pdf_name_hash, INDEX_NAME, vectors, metadata, chu
             "metadata": meta
         })
 
+        if not vectors[i] or len(vectors[i]) != 1024:
+            print("Invalid vector at", i)
+
     # 3. Upsert vectors to Pinecone (in batches)
     for batch in chunked(vector_pinecone, 100):
         index.upsert(vectors=batch, namespace=namespace)

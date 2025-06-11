@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.services.pdf.chunks_embedding import *
 from app.services.pdf.save_to_mongodb import save_pdf_to_mongo
-from app.services.pdf.save_to_pinecone import *
+from app.services.pdf.save_to_pinecone import save_to_pinecone
 
 from app.config import INDEX_NAME
 from app.database import *
@@ -37,9 +37,12 @@ async def save_to_db(pdf, prototypefile, user_id='default'):
                                                     pdf_name_hash, file_content,
                                                     user_id)
 
-        pinecone_saved = await save_to_pinecone(pdf_name, pdf_name_hash,
+        pinecone_saved = save_to_pinecone(pdf_name, pdf_name_hash,
                                                 INDEX_NAME, vectors, metadata, chunks,
                                                 namespace=user_id)
+
+        mongodb_saved["Length of vector database"] = pinecone_saved
+
         return mongodb_saved
 
     except Exception as e:
